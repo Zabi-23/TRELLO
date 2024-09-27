@@ -1,6 +1,6 @@
 
 
-// middleware/errorHandler.js
+// middleware/errorHandler.ts
 
 
 import { Request, Response, NextFunction } from 'express';

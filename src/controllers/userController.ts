@@ -1,220 +1,189 @@
 
 
-import { Request, Response } from 'express';
+
+// userController.ts
+import { Response } from 'express';
+import User, { IUser } from '../models/User';
 import bcrypt from 'bcrypt';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
-import User from '../models/User';
-import { body, validationResult } from 'express-validator';
-
-
-
-// Validering av användarens indata
-
-export const createUserValidation = [
-    body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-];
-
-// Interface för autentiserade förfrågningar
-interface AuthenticatedRequest extends Request {
-    user?: {
-        id: string;
-    };
-}
+import { generateToken, AuthRequest } from '../middleware/authMiddleware'; 
 
 // Registrera användare
-export const registerUser = async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+export const registerUser = async (req: AuthRequest, res: Response) => {
+    const { name, email, password, role } = req.body;
 
-    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+        return res.status(400).json({ message: 'Alla fält krävs' });
+    }
 
     try {
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ msg: 'User already exists.' });
+            return res.status(400).json({ message: 'Användare finns redan' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ name, email, password: hashedPassword });
-        await newUser.save();
+        // Skapa användaren
+        const user: IUser = await User.create({ name, email, password, role });
 
-        const payload = { user: { id: newUser.id } };
-        const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+        // Generera token
+        const token = generateToken(user._id.toString(), user.role || 'user'); 
 
-        res.status(201).json({ token, user: newUser });
+        // Returnera svaret
+        res.status(201).json({
+            message: 'Användare registrerad',
+            user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+            token,
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
+        console.error('Fel vid registrering av användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
 // Logga in användare
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (req: AuthRequest, res: Response) => {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Alla fält krävs' });
+    }
+
     try {
-        const user = await User.findOne({ email });
+        const user: IUser | null = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid credentials: User not found.' });
+            return res.status(401).json({ message: 'Ogiltiga referenser' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials: Wrong password.' });
+            return res.status(401).json({ message: 'Ogiltiga referenser' });
         }
 
-        const payload = { user: { id: user.id } };
-        const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+        const token = generateToken(user._id.toString(), user.role || 'user');
 
-        res.json({ token, user });
+        res.json({
+            message: 'Inloggning lyckades',
+            user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+            token,
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
+        console.error('Fel vid inloggning:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
-// Skapa en ny användare (endast för admin)
-export const createUser = async (req: AuthenticatedRequest, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { name, email, password, role } = req.body;
-    const adminId = req.user?.id;
-
-    if (!adminId) {
-        return res.status(403).json({ msg: 'Access denied.' });
-    }
-
+// Läs alla användare (endast administratörer)
+export const getUsers = async (req: AuthRequest, res: Response) => {
     try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ msg: 'User already exists.' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ name, email, password: hashedPassword, role });
-        await newUser.save();
-
-        res.status(201).json({ msg: 'User created', user: newUser });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
-    }
-};
-
-// Läs alla användare (endast för admin)
-export const getUsers = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const users = await User.find().sort({ createdAt: -1 });
+        const users = await User.find().select('-password');
         res.json(users);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
+        console.error('Fel vid hämtning av användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
-// Uppdatera en användare
-export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
-    const { id } = req.params; // Hämta ID från URL-parametern
-    const { name, email } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(404).json({ msg: 'User not found.' });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(id, { name, email }, { new: true });
-
-    if (!updatedUser) {
-        return res.status(404).json({ msg: 'User not found.' });
-    }
-
-    res.json(updatedUser);
-};
-
-// Ta bort en användare
-export const deleteUser = async (req: AuthenticatedRequest, res: Response) => {
+// Uppdatera en användare (endast för den inloggade användaren)
+export const updateUser = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
+    const { name, email, password } = req.body;
 
     try {
-        const user = await User.findByIdAndDelete(id);
+        const user: IUser | null = await User.findById(id);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'Användare hittades inte' });
         }
-        res.json({ message: 'User removed' });
+
+        if (password) {
+            user.password = await bcrypt.hash(password, 10);
+        }
+        user.name = name || user.name;
+        user.email = email || user.email;
+
+        const updatedUser = await user.save();
+        res.json({ message: 'Användare uppdaterad', updatedUser });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
+        console.error('Fel vid uppdatering av användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
-// Läs en specifik användare (endast för inloggade)
-export const getUser = async (req: AuthenticatedRequest, res: Response) => {
+// Ta bort en användare (endast för den inloggade användaren)
+export const deleteUser = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(404).json({ msg: 'User not found.' });
+    try {
+        const user: IUser | null = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: 'Användare hittades inte' });
+        }
+
+        await User.findByIdAndDelete(id);
+        res.json({ message: 'Användare borttagen' });
+    } catch (error) {
+        console.error('Fel vid borttagning av användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
+};
+
+// Läs en specifik användare
+export const getUser = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
 
     try {
-        const user = await User.findById(id);
+        const user: IUser | null = await User.findById(id).select('-password');
         if (!user) {
-            return res.status(404).json({ msg: 'User not found.' });
+            return res.status(404).json({ message: 'Användare hittades inte' });
         }
 
         res.json(user);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Server error.' });
+        console.error('Fel vid hämtning av användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
-// Middleware för att skydda rutter med JWT
-export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: Function) => {
-    const token = req.header('Authorization')?.split(' ')[1];
-    if (token) {
-        jwt.verify(token, process.env.JWT_SECRET as string, (err, user) => {
-            if (err) {
-                return res.sendStatus(403);
-            }
-            req.user = user as { id: string }; // Spara användarinformation i request-objektet
-            next();
-        });
-    } else {
-        res.sendStatus(401);
-    }
-};
-
-// Återställning av lösenord
-export const resetPassword = async (req: Request, res: Response) => {
+// Återställ lösenord
+export const resetPassword = async (req: AuthRequest, res: Response) => {
     const { email, newPassword } = req.body;
 
     if (!email || !newPassword) {
-        return res.status(400).json({ message: 'Email och nytt lösenord krävs' });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-        return res.status(404).json({ message: 'Användare hittades inte' });
+        return res.status(400).json({ message: 'E-post och nytt lösenord krävs' });
     }
 
     try {
+        const user: IUser | null = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'Användare hittades inte' });
+        }
+
         user.password = await bcrypt.hash(newPassword, 10);
         await user.save();
+
         res.json({ message: 'Lösenordet har återställts' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: 'Serverfel.' });
+        console.error('Fel vid återställning av lösenord:', error);
+        res.status(500).json({ message: 'Serverfel' });
     }
 };
 
+// Hämta den aktuella användarens information
+export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.id;
 
+    if (!userId) {
+        return res.status(404).json({ message: 'Ingen användare hittades' });
+    }
 
+    try {
+        const user: IUser | null = await User.findById(userId).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'Användare hittades inte' });
+        }
 
+        res.json(user);
+    } catch (error) {
+        console.error('Fel vid hämtning av aktuell användare:', error);
+        res.status(500).json({ message: 'Serverfel' });
+    }
+};
 
