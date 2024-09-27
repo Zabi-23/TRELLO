@@ -2,7 +2,7 @@
 
 ## Teoretiska resonemang
 
-### Motivera ditt val av databas
+### Motivera mitt val av databas
 Jag har valt att använda **MongoDB** som databasen för Trullo-projektet. Anledningen till detta val är flera:
 
 1. **Flexibilitet**: MongoDB är en NoSQL-databas som lagrar data i JSON-liknande dokument. Detta gör det enkelt att hantera förändringar i datamodellen och lägga till nya fält utan att behöva göra komplexa migreringar, vilket passar bra för en applikation som kan utvecklas över tid.
