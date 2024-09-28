@@ -41,11 +41,3 @@ router.get('/status/:status', getTasksByStatus);
 export default router;
 
 
-
-
- 
-
-// src/routes/taskRoutes.ts
-
-
-/*  */
