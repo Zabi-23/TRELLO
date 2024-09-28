@@ -1,117 +1,51 @@
+# Trullo Projekt
+
+## Teoretiska resonemang
+
+### Motivera mitt val av databas
+Jag har valt att använda **MongoDB** som databasen för Trullo-projektet. Anledningen till detta val är flera:
+
+1. **Flexibilitet**: MongoDB är en NoSQL-databas som lagrar data i JSON-liknande dokument. Detta gör det enkelt att hantera förändringar i datamodellen och lägga till nya fält utan att behöva göra komplexa migreringar, vilket passar bra för en applikation som kan utvecklas över tid.
+
+2. **Skalbarhet**: MongoDB erbjuder horisontell skalbarhet, vilket innebär att applikationen kan hantera en ökad mängd data och användare genom att lägga till fler servrar. Detta är viktigt för framtida tillväxt och användartillväxt.
+
+3. **Prestanda**: MongoDB kan hantera stora mängder data och erbjuder snabba läs- och skrivoperationer, vilket är avgörande för en applikation som syftar till att effektivt hantera uppgifter och projekt.
+
+### Redogör vad de olika teknikerna (ex. verktyg, npm-paket, etc.) gör i applikationen
+1. **Node.js**: En JavaScript-runtime som möjliggör körning av JavaScript-kod på serversidan. Detta gör att vi kan bygga vår API-server med JavaScript.
+
+2. **Express.js**: Ett webbapplikationsramverk för Node.js som förenklar hanteringen av HTTP-förfrågningar och routing. Det hjälper oss att strukturera vår server och definiera olika API-endpoints.
+
+3. **TypeScript**: Ett superset av JavaScript som lägger till typkontroll. Genom att använda TypeScript kan vi fånga typfel under utveckling, vilket leder till mer robust och underhållbar kod.
+
+4. **Mongoose**: Ett ODM (Object Data Modeling) bibliotek för MongoDB och Node.js. Det tillhandahåller en schema-baserad lösning för att modellera data i MongoDB, vilket gör det enklare att definiera datamodeller och interagera med databasen.
+
+5. **bcryptjs**: Ett paket för att hash och salta lösenord innan de lagras i databasen. Detta säkerställer att användarnas lösenord skyddas och inte lagras i klartext.
+
+6. **jsonwebtoken**: Ett bibliotek för att skapa och verifiera JSON Web Tokens (JWT). Detta används för autentisering och auktorisering av användare i applikationen.
+
+### Redogör översiktligt hur applikationen fungerar
+Applikationen Trullo fungerar som ett API för hantering av användare och uppgifter i en projekthanteringsmiljö. Här är en översiktlig beskrivning av hur den fungerar:
+
+1. **Användarhantering**: 
+   - Användare kan registrera sig genom att skicka en POST-förfrågan till `/api/users` med sina uppgifter (namn, e-post och lösenord).
+   - Användare kan logga in, vilket genererar en JWT som returneras till klienten för autentisering av framtida förfrågningar.
+   - Användare kan uppdatera sina uppgifter och radera sina konton genom att använda de angivna API-endpoints.
+
+2. **Uppgiftshantering**:
+   - Användare kan skapa uppgifter genom att skicka en POST-förfrågan till `/api/tasks`, vilket skapar en uppgift med fälten `title`, `description`, `status`, `assignedTo`, `createdAt` och `finishedBy`.
+   - Användare kan läsa uppgifter med GET-förfrågningar, vilket returnerar en lista över uppgifter eller en specifik uppgift baserat på ID.
+   - Användare kan uppdatera eller ta bort uppgifter via PUT- och DELETE-förfrågningar.
+
+3. **Validering och Felhantering**: 
+   - Applikationen implementerar grundläggande validering av indata för att säkerställa att de uppfyller krav som exempelvis att lösenordet är tillräckligt långt och att e-postadresser är i rätt format.
+   - Felhantering är implementerad för att hantera situationer där användaren försöker utföra ogiltiga operationer, som att logga in med felaktiga uppgifter eller försöka hämta en uppgift som inte finns.
+
+4. **Autentisering och Auktorisering**:
+   - Endast autentiserade användare kan skapa, läsa, uppdatera och ta bort uppgifter, vilket säkerställs genom att verifiera JWT som skickas med varje begäran.
 
 
-# Trullo Project - Backend
 
-## Overview
 
-The Trullo project is a task management application built with Node.js, Express, Mongoose, and TypeScript. This backend serves as an API for user and task management, allowing users to create accounts, manage tasks, and perform CRUD operations.
 
-## Technologies Used
-
-- **Node.js**: JavaScript runtime for server-side programming.
-- **Express.js**: Web framework for building APIs and handling routing.
-- **Mongoose**: ODM library for MongoDB, used for schema definitions and database interactions.
-- **TypeScript**: Typed superset of JavaScript for building scalable applications.
-- **Bcrypt**: Library for hashing passwords securely.
-- **Dotenv**: Module for loading environment variables from a `.env` file.
-
-## Project Structure
-
-```
-Trullo-app/
-├── server/
-│   ├── src/
-│   │   ├── app.ts
-│   │   ├── controllers/
-│   │   │   ├── taskController.ts
-│   │   │   └── userController.ts
-│   │   ├── models/
-│   │   │   ├── Task.ts
-│   │   │   └── User.ts
-│   │   ├── routes/
-│   │   │   ├── taskRoutes.ts
-│   │   │   └── userRoutes.ts
-│   │   ├── config/
-│   │   │   └── db.ts
-│   │   └── .env
-│   └── package.json
-```
-
-### Key Files and Their Functions
-
-1. **app.ts**: 
-   - The entry point of the application where the Express server is initialized. It configures middleware, routes, and connects to the database.
-
-2. **controllers/**:
-   - Contains the logic for handling requests related to users and tasks.
-   - **userController.ts**: Handles user-related operations (registration, login, retrieval).
-   - **taskController.ts**: Manages task-related operations (creating, updating, deleting tasks).
-
-3. **models/**:
-   - Contains Mongoose schemas for defining the structure of data.
-   - **User.ts**: Defines the User schema with fields like `id`, `name`, `email`, and `password`.
-   - **Task.ts**: Defines the Task schema with fields like `id`, `title`, `description`, `status`, and `assignedTo`.
-
-4. **routes/**:
-   - Defines the API endpoints and associates them with their respective controllers.
-   - **userRoutes.ts**: Routes for user operations.
-   - **taskRoutes.ts**: Routes for task operations.
-
-5. **config/db.ts**:
-   - Contains the database connection logic using Mongoose.
-
-6. **.env**:
-   - Stores environment variables, such as the MongoDB connection string.
-
-## API Endpoints
-
-- **User Management**
-  - `POST /api/users`: Create a new user (admin role required).
-  - `GET /api/users`: Retrieve all users.
-  - `POST /api/users/login`: Authenticate a user.
-
-- **Task Management**
-  - `POST /api/tasks`: Create a new task.
-  - `GET /api/tasks`: Retrieve all tasks.
-  - `PATCH /api/tasks/:id`: Update a task by ID.
-  - `DELETE /api/tasks/:id`: Delete a task by ID.
-
-## How to Run the Backend
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd Trullo-app/server
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Set up your environment variables in a `.env` file:
-   ```plaintext
-   MONGO_URI=mongodb+srv://<username>:<password>@cluster.yourcluster.mongodb.net/<dbname>?retryWrites=true&w=majority
-   ```
-
-4. Start the server:
-   ```bash
-   npm run dev
-   ```
-
-## Request for Frontend Development
-
-We would like to request V0.dev to create a frontend for the Trullo project based on the backend API outlined above. The frontend should allow users to:
-
-- **User Registration and Login**: Provide forms for users to create accounts and log in.
-- **Task Management Interface**: Implement an interface for users to create, update, and delete tasks.
-- **Drag and Drop Functionality**: Enable users to reorder tasks and change their statuses through a drag-and-drop interface.
-- **Admin Dashboard**: Create an admin interface for managing users and tasks.
-
-### Technologies Suggested for Frontend
-
-- **React**: For building the user interface.
-- **Redux**: For state management.
-- **React Router**: For routing between different components/pages.
-- **Drag and Drop Libraries**: Such as `react-beautiful-dnd` for implementing drag-and-drop functionality.
 
