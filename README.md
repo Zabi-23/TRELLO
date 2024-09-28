@@ -1,48 +1,45 @@
-# Trullo Projekt
+# Trullo 
 
-## Teoretiska resonemang
+## Introduktion
+Trullo är ett API för att hantera användare och uppgifter i en projekthanteringsmiljö. Applikationen är byggd med Node.js, Express.js och TypeScript, och använder MongoDB som databas. API:et tillåter användare att skapa, läsa, uppdatera och ta bort både användare och uppgifter, samt hantera projekten dessa uppgifter tillhör. Autentisering sker via JSON Web Tokens (JWT) för att säkerställa att endast auktoriserade användare kan utföra dessa operationer.
 
-### Motivera mitt val av databas
-Jag har valt att använda **MongoDB** som databasen för Trullo-projektet. Anledningen till detta val är flera:
+## Val av databas
+Vi valde **MongoDB** som databas för projektet eftersom det är en NoSQL-databas som erbjuder flera fördelar:
 
-1. **Flexibilitet**: MongoDB är en NoSQL-databas som lagrar data i JSON-liknande dokument. Detta gör det enkelt att hantera förändringar i datamodellen och lägga till nya fält utan att behöva göra komplexa migreringar, vilket passar bra för en applikation som kan utvecklas över tid.
+1. **Flexibilitet:** MongoDB lagrar data som JSON-liknande dokument, vilket gör det enkelt att anpassa datamodellen över tid. Detta är särskilt användbart i en projekthanteringsapplikation där datan kan förändras och växa.
+2. **Skalbarhet:** MongoDB är skalbar och kan enkelt anpassas för att hantera fler användare och uppgifter i takt med att applikationen växer.
+3. **Prestanda:** MongoDB erbjuder snabba läs- och skrivoperationer, vilket är viktigt för att hantera projekt- och uppgiftshantering effektivt.
 
-2. **Skalbarhet**: MongoDB erbjuder horisontell skalbarhet, vilket innebär att applikationen kan hantera en ökad mängd data och användare genom att lägga till fler servrar. Detta är viktigt för framtida tillväxt och användartillväxt.
+## Använda tekniker och verktyg
+Här är en kort genomgång av de viktigaste teknikerna och npm-paketen som används i projektet:
 
-3. **Prestanda**: MongoDB kan hantera stora mängder data och erbjuder snabba läs- och skrivoperationer, vilket är avgörande för en applikation som syftar till att effektivt hantera uppgifter och projekt.
+- **Node.js:** En plattform som gör det möjligt att köra JavaScript på serversidan.
+- **Express.js:** Ett webbramverk för Node.js som förenklar skapandet av API:er och hanteringen av HTTP-förfrågningar.
+- **TypeScript:** En version av JavaScript som inkluderar typkontroll, vilket bidrar till att fånga fel under utvecklingsfasen och ger mer robust kod.
+- **MongoDB & Mongoose:** MongoDB är databasen och Mongoose används för att modellera data och interagera med MongoDB på ett smidigt sätt.
+- **bcryptjs:** Används för att hash och salta användarlösenord för att säkerställa att de lagras på ett säkert sätt i databasen.
+- **jsonwebtoken (JWT):** Används för att skapa och verifiera autentiseringstokens, vilket gör att endast behöriga användare kan komma åt eller ändra data.
 
-### Redogör vad de olika teknikerna (ex. verktyg, npm-paket, etc.) gör i applikationen
-1. **Node.js**: En JavaScript-runtime som möjliggör körning av JavaScript-kod på serversidan. Detta gör att vi kan bygga vår API-server med JavaScript.
+## Hur applikationen fungerar
+### Användarhantering:
+- **Registrering:** Användare kan registrera sig genom att skicka en POST-förfrågan till `/api/users` med sina uppgifter (namn, e-post och lösenord).
+- **Inloggning:** När användare loggar in, genereras en JWT som används för att autentisera framtida förfrågningar.
+- **Uppdatera och ta bort:** Användare kan uppdatera sina uppgifter eller radera sitt konto genom att göra en PUT- eller DELETE-förfrågan till relevant endpoint.
 
-2. **Express.js**: Ett webbapplikationsramverk för Node.js som förenklar hanteringen av HTTP-förfrågningar och routing. Det hjälper oss att strukturera vår server och definiera olika API-endpoints.
+### Uppgiftshantering:
+- **Skapa uppgift:** Användare kan skapa nya uppgifter genom en POST-förfrågan till `/api/tasks`. Varje uppgift inkluderar information som `title`, `description`, `status`, `assignedTo`, `createdAt` och `finishedBy`.
+- **Läsa uppgifter:** En GET-förfrågan kan returnera en lista med alla uppgifter eller en specifik uppgift genom att ange dess ID.
+- **Uppdatera och ta bort:** Användare kan uppdatera eller ta bort en uppgift genom att skicka en PUT- eller DELETE-förfrågan.
 
-3. **TypeScript**: Ett superset av JavaScript som lägger till typkontroll. Genom att använda TypeScript kan vi fånga typfel under utveckling, vilket leder till mer robust och underhållbar kod.
+### Validering och felhantering:
+- **Validering:** Applikationen validerar indata, till exempel att lösenordet är tillräckligt starkt och att e-postadressen är i rätt format.
+- **Felhantering:** Om användaren försöker göra en ogiltig operation, som att logga in med felaktiga uppgifter eller hämta en uppgift som inte finns, returnerar applikationen meningsfulla felmeddelanden.
 
-4. **Mongoose**: Ett ODM (Object Data Modeling) bibliotek för MongoDB och Node.js. Det tillhandahåller en schema-baserad lösning för att modellera data i MongoDB, vilket gör det enklare att definiera datamodeller och interagera med databasen.
+### Autentisering och auktorisering:
+- **JWT-baserad autentisering:** Endast användare som har autentiserats med en giltig JWT-token kan utföra operationer på uppgifter och användarkonton.
+- **Rollhantering (valbart för vidareutveckling):** Möjlighet att implementera roller där exempelvis en admin kan hantera alla uppgifter och användare.
 
-5. **bcryptjs**: Ett paket för att hash och salta lösenord innan de lagras i databasen. Detta säkerställer att användarnas lösenord skyddas och inte lagras i klartext.
 
-6. **jsonwebtoken**: Ett bibliotek för att skapa och verifiera JSON Web Tokens (JWT). Detta används för autentisering och auktorisering av användare i applikationen.
-
-### Redogör översiktligt hur applikationen fungerar
-Applikationen Trullo fungerar som ett API för hantering av användare och uppgifter i en projekthanteringsmiljö. Här är en översiktlig beskrivning av hur den fungerar:
-
-1. **Användarhantering**: 
-   - Användare kan registrera sig genom att skicka en POST-förfrågan till `/api/users` med sina uppgifter (namn, e-post och lösenord).
-   - Användare kan logga in, vilket genererar en JWT som returneras till klienten för autentisering av framtida förfrågningar.
-   - Användare kan uppdatera sina uppgifter och radera sina konton genom att använda de angivna API-endpoints.
-
-2. **Uppgiftshantering**:
-   - Användare kan skapa uppgifter genom att skicka en POST-förfrågan till `/api/tasks`, vilket skapar en uppgift med fälten `title`, `description`, `status`, `assignedTo`, `createdAt` och `finishedBy`.
-   - Användare kan läsa uppgifter med GET-förfrågningar, vilket returnerar en lista över uppgifter eller en specifik uppgift baserat på ID.
-   - Användare kan uppdatera eller ta bort uppgifter via PUT- och DELETE-förfrågningar.
-
-3. **Validering och Felhantering**: 
-   - Applikationen implementerar grundläggande validering av indata för att säkerställa att de uppfyller krav som exempelvis att lösenordet är tillräckligt långt och att e-postadresser är i rätt format.
-   - Felhantering är implementerad för att hantera situationer där användaren försöker utföra ogiltiga operationer, som att logga in med felaktiga uppgifter eller försöka hämta en uppgift som inte finns.
-
-4. **Autentisering och Auktorisering**:
-   - Endast autentiserade användare kan skapa, läsa, uppdatera och ta bort uppgifter, vilket säkerställs genom att verifiera JWT som skickas med varje begäran.
 
 
 
